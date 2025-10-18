@@ -69,8 +69,7 @@ interface AccountGroup {
 
 export default function DesktopApp() {
   const [activePanel, setActivePanel] = useState<ActivePanel>("browser")
-  const [currentUrl, setCurrentUrl] = useState("")
-  const [displayUrl, setDisplayUrl] = useState("") // 表示用URL
+  const [url, setUrl] = useState("")
   const [currentTitle, setCurrentTitle] = useState("")
   const [currentFavicon, setCurrentFavicon] = useState<string>("")
   const [currentIp] = useState("192.168.1.1")
@@ -88,8 +87,7 @@ export default function DesktopApp() {
   // クライアントサイドマウント検出
   useEffect(() => {
     setIsMounted(true)
-    setCurrentUrl("https://www.google.com")
-    setDisplayUrl("https://www.google.com")
+    setUrl("https://www.google.com")
   }, [])
 
   // ブックマークの読み込み
@@ -109,9 +107,9 @@ export default function DesktopApp() {
 
   // 現在のURLがブックマークされているかチェック
   useEffect(() => {
-    const isCurrentBookmarked = bookmarks.some(bookmark => bookmark.url === currentUrl)
+    const isCurrentBookmarked = bookmarks.some(bookmark => bookmark.url === url)
     setIsBookmarked(isCurrentBookmarked)
-  }, [currentUrl, bookmarks])
+  }, [url, bookmarks])
 
   const [draggedTab, setDraggedTab] = useState<string | null>(null)
   const [dragOverTab, setDragOverTab] = useState<string | null>(null)
@@ -125,13 +123,13 @@ export default function DesktopApp() {
   const handleToggleBookmark = () => {
     if (isBookmarked) {
       // ブックマークを削除
-      setBookmarks(prev => prev.filter(bookmark => bookmark.url !== currentUrl))
+      setBookmarks(prev => prev.filter(bookmark => bookmark.url !== url))
     } else {
       // ブックマークを追加
       const newBookmark: Bookmark = {
         id: Date.now().toString(),
-        title: currentTitle || new URL(currentUrl).hostname,
-        url: currentUrl,
+        title: currentTitle || new URL(url).hostname,
+        url: url,
         favicon: currentFavicon || undefined
       }
       setBookmarks(prev => [...prev, newBookmark])
@@ -139,8 +137,7 @@ export default function DesktopApp() {
   }
 
   const handleBookmarkClick = (bookmark: Bookmark) => {
-    setCurrentUrl(bookmark.url)
-    setDisplayUrl(bookmark.url)
+    setUrl(bookmark.url)
     // currentUrlの変更により、useEffectが自動的にWebViewをナビゲートします
   }
 
@@ -177,9 +174,8 @@ export default function DesktopApp() {
         setIsElectronReady(true)
         
         // 初期URLを設定
-        if (!currentUrl) {
-          setCurrentUrl('https://www.google.com')
-          setDisplayUrl('https://www.google.com')
+        if (!url) {
+          setUrl('https://www.google.com')
         }
       } else {
         retryCount++
@@ -191,9 +187,8 @@ export default function DesktopApp() {
           setIsElectronReady(true)
           
           // 初期URLを設定
-          if (!currentUrl) {
-            setCurrentUrl('https://www.google.com')
-            setDisplayUrl('https://www.google.com')
+          if (!url) {
+            setUrl('https://www.google.com')
           }
         }
       }
@@ -202,38 +197,38 @@ export default function DesktopApp() {
     checkElectronAPI()
   }, [])
 
-  // currentUrlが変更されたときにBrowserViewをナビゲート
+  // URLが変更されたときにBrowserViewをナビゲート
   useEffect(() => {
-    console.log('[DEBUG] currentUrl changed:', currentUrl, 'isMounted:', isMounted, 'isElectronReady:', isElectronReady)
+    console.log('[DEBUG] url changed:', url, 'isMounted:', isMounted, 'isElectronReady:', isElectronReady)
     console.log('[DEBUG] lastNavigatedUrl:', lastNavigatedUrlRef.current)
     
     // about:blankを無視
-    if (currentUrl === 'about:blank') {
+    if (url === 'about:blank') {
       console.log('[DEBUG] Skipping navigation - about:blank detected')
       return
     }
     
-    if (!currentUrl || !isMounted || !isElectronReady) {
+    if (!url || !isMounted || !isElectronReady) {
       console.log('[DEBUG] Skipping navigation - conditions not met')
       return
     }
     
     // 同じURLへの重複ナビゲートを防ぐ
-    if (currentUrl === lastNavigatedUrlRef.current) {
+    if (url === lastNavigatedUrlRef.current) {
       console.log('[DEBUG] Skipping navigation - same URL as last navigated')
       return
     }
     
-    console.log('[DEBUG] Calling browserView.loadUrl with:', currentUrl)
-    lastNavigatedUrlRef.current = currentUrl
+    console.log('[DEBUG] Calling browserView.loadUrl with:', url)
+    lastNavigatedUrlRef.current = url
     
     // BrowserView APIを使用してURLをロード
-    window.electronAPI?.browserView?.loadUrl(currentUrl).then((result: any) => {
+    window.electronAPI?.browserView?.loadUrl(url).then((result: any) => {
       console.log('[DEBUG] loadUrl result:', result)
     }).catch((error: any) => {
       console.error('[DEBUG] Error navigating BrowserView:', error)
     })
-  }, [currentUrl, isMounted, isElectronReady])
+  }, [url])
 
   // BrowserViewのイベントリスナーを設定（一度だけ）
   useEffect(() => {
@@ -253,9 +248,8 @@ export default function DesktopApp() {
           return
         }
         
-        // 表示用URLのみ更新（ナビゲートはトリガーしない）
-        console.log('[DEBUG] Updating display URL only (not triggering navigation)')
-        setDisplayUrl(newUrl)
+        // React側のurl stateは更新しない（ループ防止）
+        console.log('[DEBUG] Not updating url state to avoid loops')
         
         // タブのURLも更新
         setTabs(prev => prev.map(tab => 
@@ -617,8 +611,7 @@ export default function DesktopApp() {
     // 空のURLの場合はデフォルトページに
     if (!trimmedUrl) {
       console.log('[DEBUG] Empty URL, navigating to Google')
-      setCurrentUrl('https://www.google.com')
-      setDisplayUrl('https://www.google.com')
+      setUrl('https://www.google.com')
       return
     }
     
@@ -652,9 +645,8 @@ export default function DesktopApp() {
     
     // WebView の src プロップと API の二重ナビゲーションを避けるため、
     // ここでは state 更新のみに統一する
-    console.log('[DEBUG] Setting currentUrl to:', normalizedUrl)
-    setCurrentUrl(normalizedUrl)
-    setDisplayUrl(normalizedUrl)
+    console.log('[DEBUG] Setting url to:', normalizedUrl)
+    setUrl(normalizedUrl)
   }
 
   const handleGoBack = async () => {
@@ -689,14 +681,11 @@ export default function DesktopApp() {
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const url = displayUrl.trim()
-    if (url) {
-      handleNavigate(url)
+    const input = (e.currentTarget as HTMLElement).querySelector('input') as HTMLInputElement | null
+    const newUrl = input?.value?.trim() || ''
+    if (newUrl) {
+      handleNavigate(newUrl)
     }
-  }
-
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDisplayUrl(e.target.value)
   }
 
   const addNewTab = () => {
@@ -708,8 +697,7 @@ export default function DesktopApp() {
       isActive: true,
     }
     setTabs((prev) => prev.map((tab) => ({ ...tab, isActive: false })).concat(newTab))
-    setCurrentUrl("https://www.google.com")
-    setDisplayUrl("https://www.google.com")
+    setUrl("https://www.google.com")
     setCurrentTitle("New Tab")
     setCurrentFavicon("")
   }
@@ -718,8 +706,7 @@ export default function DesktopApp() {
     setTabs((prev) => prev.map((tab) => ({ ...tab, isActive: tab.id === tabId })))
     const activeTab = tabs.find((tab) => tab.id === tabId)
     if (activeTab) {
-      setCurrentUrl(activeTab.url)
-      setDisplayUrl(activeTab.url)
+      setUrl(activeTab.url)
       setCurrentTitle(activeTab.title)
       setCurrentFavicon(activeTab.favicon || "")
     }
@@ -831,15 +818,15 @@ export default function DesktopApp() {
                 <div className="flex-1 flex items-center mx-2">
                   <form onSubmit={handleUrlSubmit} className="flex-1 flex items-center backdrop-blur-xl bg-card border border-foreground/10 rounded-full px-3 py-1 focus-within:border-[var(--color-unicorn-blue)]/50 focus-within:shadow-lg focus-within:shadow-[var(--color-unicorn-blue)]/20 transition-all duration-150 hover:bg-card-foreground/5 hover:border-foreground/20">
                     <div className="flex items-center gap-2 mr-2">
-                      {currentUrl.startsWith("https://") ? (
+                      {url.startsWith("https://") ? (
                         <Lock className="h-3 w-3 text-[var(--color-success)]" />
                       ) : (
                         <Shield className="h-3 w-3 text-[var(--color-error)]" />
                       )}
                     </div>
                     <Input
-                      value={displayUrl}
-                      onChange={handleUrlChange}
+                      key={url}
+                      defaultValue={url}
                       className="bg-transparent border-none text-foreground placeholder:text-muted-foreground focus:ring-0 focus:outline-none p-0 text-sm h-4 flex-1"
                       placeholder="Search Google or type a URL"
                     />
@@ -945,9 +932,9 @@ export default function DesktopApp() {
                       Electron準備完了: {isElectronReady ? "はい" : "いいえ"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      現在のURL: {currentUrl || "なし"}
+                      現在のURL: {url || "なし"}
                     </p>
-                    {!currentUrl && (
+                    {!url && (
                       <p className="text-xs text-muted-foreground mt-2">
                         URLが指定されていません
                       </p>
