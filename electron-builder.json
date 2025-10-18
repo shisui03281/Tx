@@ -1,0 +1,48 @@
+{
+  "appId": "com.desktop-app.electron",
+  "productName": "Desktop App",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "out/**/*",
+    "electron/**/*",
+    "node_modules/**/*",
+    "package.json",
+    "!node_modules/**/{CHANGELOG.md,README.md,README,readme.md,readme}",
+    "!node_modules/**/{test,__tests__,tests,powered-test,example,examples}",
+    "!node_modules/**/*.d.ts",
+    "!node_modules/.bin",
+    "!**/*.{iml,o,hprof}"
+  ],
+  "extraResources": [
+    {
+      "from": "public/",
+      "to": "public/"
+    }
+  ],
+  "win": {
+    "target": "nsis",
+    "icon": "public/placeholder-logo.png"
+  },
+  "mac": {
+    "target": "dmg",
+    "icon": "public/placeholder-logo.png",
+    "category": "public.app-category.productivity"
+  },
+  "linux": {
+    "target": "AppImage",
+    "icon": "public/placeholder-logo.png",
+    "category": "Office"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "publish": null,
+  "buildDependenciesFromSource": false,
+  "nodeGypRebuild": false,
+  "npmRebuild": false
+}
