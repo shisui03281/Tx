@@ -261,6 +261,55 @@ function createBrowserView() {
                         }
                         return getParameter.call(this, parameter);
                     };
+
+                    // Canvas Fingerprinting を妨害
+                    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+                    HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+                        const ctx = originalGetContext.apply(this, [type, ...args]);
+                        if (!ctx) return ctx;
+                        if (type === '2d' || type === 'webgl' || type === 'webgl2') {
+                            const originalGetImageData = ctx.getImageData?.bind(ctx);
+                            if (originalGetImageData) {
+                                ctx.getImageData = function(...idataArgs) {
+                                    const imageData = originalGetImageData(...idataArgs);
+                                    for (let i = 0; i < imageData.data.length; i += 4) {
+                                        imageData.data[i] = imageData.data[i] + Math.random() * 0.1;
+                                    }
+                                    return imageData;
+                                };
+                            }
+                        }
+                        return ctx;
+                    };
+
+                    // AudioContext Fingerprinting を妨害
+                    if (typeof AudioContext !== 'undefined') {
+                        const OriginalAudioContext = AudioContext;
+                        window.AudioContext = function(...acArgs) {
+                            const ac = new OriginalAudioContext(...acArgs);
+                            const originalCreateOscillator = ac.createOscillator.bind(ac);
+                            ac.createOscillator = function() {
+                                const osc = originalCreateOscillator();
+                                const originalStart = osc.start.bind(osc);
+                                osc.start = function(...sArgs) {
+                                    try { osc.frequency.value += Math.random() * 0.0001; } catch(e) {}
+                                    return originalStart(...sArgs);
+                                };
+                                return osc;
+                            };
+                            return ac;
+                        };
+                    }
+
+                    // Screen 解像度に微小ノイズ
+                    try {
+                        Object.defineProperties(window.screen, {
+                            width: { get: () => 1920 + Math.floor(Math.random() * 10) },
+                            height: { get: () => 1080 + Math.floor(Math.random() * 10) },
+                            availWidth: { get: () => 1920 + Math.floor(Math.random() * 10) },
+                            availHeight: { get: () => 1040 + Math.floor(Math.random() * 10) }
+                        });
+                    } catch(e) {}
                     
                 } catch (e) {
                     // エラーを無視
@@ -339,10 +388,10 @@ function setupSession() {
         headers['Sec-Fetch-User'] = '?1';
         headers['Cache-Control'] = 'max-age=0';
 
-        // 自動化フラグを削除（bot検出を回避）
-        delete headers['Sec-Ch-Ua'];
-        delete headers['Sec-Ch-Ua-Mobile'];
-        delete headers['Sec-Ch-Ua-Platform'];
+        // Sec-CH UA系ヘッダーを正しく設定（削除しない）
+        headers['Sec-Ch-Ua'] = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"';
+        headers['Sec-Ch-Ua-Mobile'] = '?0';
+        headers['Sec-Ch-Ua-Platform'] = '"Windows"';
         delete headers['Sec-Ch-Ua-Full-Version'];
         delete headers['Sec-Ch-Ua-Full-Version-List'];
 
@@ -564,6 +613,55 @@ function createWindow() {
                         }
                         return getParameter.call(this, parameter);
                     };
+
+                    // Canvas Fingerprinting を妨害
+                    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+                    HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+                        const ctx = originalGetContext.apply(this, [type, ...args]);
+                        if (!ctx) return ctx;
+                        if (type === '2d' || type === 'webgl' || type === 'webgl2') {
+                            const originalGetImageData = ctx.getImageData?.bind(ctx);
+                            if (originalGetImageData) {
+                                ctx.getImageData = function(...idataArgs) {
+                                    const imageData = originalGetImageData(...idataArgs);
+                                    for (let i = 0; i < imageData.data.length; i += 4) {
+                                        imageData.data[i] = imageData.data[i] + Math.random() * 0.1;
+                                    }
+                                    return imageData;
+                                };
+                            }
+                        }
+                        return ctx;
+                    };
+
+                    // AudioContext Fingerprinting を妨害
+                    if (typeof AudioContext !== 'undefined') {
+                        const OriginalAudioContext = AudioContext;
+                        window.AudioContext = function(...acArgs) {
+                            const ac = new OriginalAudioContext(...acArgs);
+                            const originalCreateOscillator = ac.createOscillator.bind(ac);
+                            ac.createOscillator = function() {
+                                const osc = originalCreateOscillator();
+                                const originalStart = osc.start.bind(osc);
+                                osc.start = function(...sArgs) {
+                                    try { osc.frequency.value += Math.random() * 0.0001; } catch(e) {}
+                                    return originalStart(...sArgs);
+                                };
+                                return osc;
+                            };
+                            return ac;
+                        };
+                    }
+
+                    // Screen 解像度に微小ノイズ
+                    try {
+                        Object.defineProperties(window.screen, {
+                            width: { get: () => 1920 + Math.floor(Math.random() * 10) },
+                            height: { get: () => 1080 + Math.floor(Math.random() * 10) },
+                            availWidth: { get: () => 1920 + Math.floor(Math.random() * 10) },
+                            availHeight: { get: () => 1040 + Math.floor(Math.random() * 10) }
+                        });
+                    } catch(e) {}
                     
                 } catch (e) {
                     // エラーを無視

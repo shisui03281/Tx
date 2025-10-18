@@ -77,9 +77,13 @@ if (originalQuery) {
     );
 }
 
-// プラグインの長さを偽装
+// プラグインを実在っぽいオブジェクトで偽装
 Object.defineProperty(navigator, 'plugins', {
-    get: () => [1, 2, 3, 4, 5],
+    get: () => [
+        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
+        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+        { name: 'Native Client', filename: 'internal-nacl-plugin' }
+    ],
     configurable: true
 });
 
@@ -88,4 +92,20 @@ Object.defineProperty(navigator, 'languages', {
     get: () => ['ja', 'en-US', 'en'],
     configurable: true
 });
+
+// navigator.webdriver を常に undefined に偽装
+try {
+    Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+        configurable: true
+    });
+} catch (e) { }
+
+// window.chrome を補完
+if (!window.chrome) {
+    window.chrome = {};
+}
+if (!window.chrome.runtime) {
+    window.chrome.runtime = {};
+}
 
