@@ -88,7 +88,148 @@ export default function DesktopApp() {
   useEffect(() => {
     setIsMounted(true)
     setUrl("https://www.google.com")
+    
+    // Turnstile bypass機能を初期化
+    initializeTurnstileBypass()
+    
+    // ページ監視を開始
+    monitorPage()
   }, [])
+
+  // Turnstile bypass機能の初期化
+  const initializeTurnstileBypass = () => {
+    if (typeof window === 'undefined') return
+
+    // Canvas Fingerprintingを妨害
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = function (type: any, options?: any) {
+      const context = originalGetContext.call(this, type, options)
+
+      if ((type === '2d' || type === 'webgl' || type === 'webgl2') && context && 'getImageData' in context) {
+        // ランダムノイズを追加してfingerprintを変更
+        const originalGetImageData = (context as any).getImageData
+        if (originalGetImageData) {
+          (context as any).getImageData = function (...args: any[]) {
+            const imageData = originalGetImageData.apply(this, args)
+            // 微小なノイズを追加
+            for (let i = 0; i < imageData.data.length; i += 4) {
+              imageData.data[i] = imageData.data[i] + Math.random() * 0.1
+            }
+            return imageData
+          }
+        }
+      }
+
+      return context as any
+    }
+
+    // AudioContext Fingerprintingを妨害
+    if (typeof AudioContext !== 'undefined') {
+      const OriginalAudioContext = AudioContext
+      ;(window as any).AudioContext = function (contextOptions?: AudioContextOptions) {
+        const audioContext = new OriginalAudioContext(contextOptions)
+
+        const originalCreateOscillator = audioContext.createOscillator
+        audioContext.createOscillator = function () {
+          const oscillator = originalCreateOscillator.call(this)
+          // 周波数に微小な変更を加える
+          const originalStart = oscillator.start
+          oscillator.start = function (when?: number) {
+            oscillator.frequency.value += Math.random() * 0.0001
+            return originalStart.call(this, when)
+          }
+          return oscillator
+        }
+
+        return audioContext
+      }
+    }
+
+    // WebGL Fingerprintingを妨害
+    if (typeof WebGLRenderingContext !== 'undefined') {
+      const originalGetParameter = WebGLRenderingContext.prototype.getParameter
+      WebGLRenderingContext.prototype.getParameter = function (parameter: any) {
+        // 一般的なGPU情報を返す代わりに標準的な値を返す
+        if (parameter === 37445) { // UNMASKED_VENDOR_WEBGL
+          return 'Intel Inc.'
+        }
+        if (parameter === 37446) { // UNMASKED_RENDERER_WEBGL
+          return 'Intel Iris OpenGL Engine'
+        }
+        return originalGetParameter.apply(this, [parameter])
+      }
+    }
+
+    // Screen解像度のノイズ追加
+    Object.defineProperties(window.screen, {
+      width: {
+        get: () => 1920 + Math.floor(Math.random() * 10)
+      },
+      height: {
+        get: () => 1080 + Math.floor(Math.random() * 10)
+      },
+      availWidth: {
+        get: () => 1920 + Math.floor(Math.random() * 10)
+      },
+      availHeight: {
+        get: () => 1040 + Math.floor(Math.random() * 10)
+      }
+    })
+
+    console.log('Turnstile Bypass - All patches applied successfully')
+  }
+
+  // Turnstile検出機能
+  const detectTurnstile = () => {
+    if (typeof window === 'undefined') return false
+
+    // Turnstileのiframeを検出
+    const turnstileIframe = document.querySelector('iframe[src*="challenges.cloudflare.com"]')
+    if (turnstileIframe) {
+      console.log('Turnstile challenge detected!')
+      return true
+    }
+
+    // Turnstileのウィジェットを検出
+    const turnstileWidget = document.querySelector('[data-sitekey]')
+    if (turnstileWidget) {
+      console.log('Turnstile widget detected!')
+      return true
+    }
+
+    return false
+  }
+
+  // ページの状態を監視
+  const monitorPage = () => {
+    if (typeof window === 'undefined') return
+
+    console.log('Monitoring page for Turnstile challenges...')
+
+    // 定期的にチェック
+    setInterval(() => {
+      const hasTurnstile = detectTurnstile()
+
+      if (hasTurnstile) {
+        console.log('Turnstile is present on the page')
+        // 必要に応じて追加の処理をここに実装
+      }
+    }, 2000)
+
+    // DOMの変更を監視
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length > 0) {
+          detectTurnstile()
+        }
+      })
+    })
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    })
+  }
 
   // ブックマークの読み込み
   useEffect(() => {
@@ -199,34 +340,25 @@ export default function DesktopApp() {
 
   // URLが変更されたときにBrowserViewをナビゲート
   useEffect(() => {
-    console.log('[DEBUG] url changed:', url, 'isMounted:', isMounted, 'isElectronReady:', isElectronReady)
-    console.log('[DEBUG] lastNavigatedUrl:', lastNavigatedUrlRef.current)
-    
     // about:blankを無視
     if (url === 'about:blank') {
-      console.log('[DEBUG] Skipping navigation - about:blank detected')
       return
     }
     
     if (!url || !isMounted || !isElectronReady) {
-      console.log('[DEBUG] Skipping navigation - conditions not met')
       return
     }
     
     // 同じURLへの重複ナビゲートを防ぐ
     if (url === lastNavigatedUrlRef.current) {
-      console.log('[DEBUG] Skipping navigation - same URL as last navigated')
       return
     }
     
-    console.log('[DEBUG] Calling browserView.loadUrl with:', url)
     lastNavigatedUrlRef.current = url
     
     // BrowserView APIを使用してURLをロード
-    window.electronAPI?.browserView?.loadUrl(url).then((result: any) => {
-      console.log('[DEBUG] loadUrl result:', result)
-    }).catch((error: any) => {
-      console.error('[DEBUG] Error navigating BrowserView:', error)
+    window.electronAPI?.browserView?.loadUrl(url).catch((error: any) => {
+      console.error('Navigation error:', error)
     })
   }, [url])
 
@@ -240,16 +372,12 @@ export default function DesktopApp() {
       
       // URL変更イベント
       window.electronAPI.browserView.onUrlChanged((newUrl: string) => {
-        console.log('[DEBUG] onUrlChanged received:', newUrl)
-        
         // about:blankを無視
         if (newUrl === 'about:blank' || !newUrl) {
-          console.log('[DEBUG] Ignoring about:blank or empty URL')
           return
         }
         
         // React側のurl stateは更新しない（ループ防止）
-        console.log('[DEBUG] Not updating url state to avoid loops')
         
         // タブのURLも更新
         setTabs(prev => prev.map(tab => 
@@ -606,11 +734,8 @@ export default function DesktopApp() {
   const handleNavigate = async (url: string) => {
     const trimmedUrl = url.trim()
     
-    console.log('[DEBUG] handleNavigate called with:', url)
-    
     // 空のURLの場合はデフォルトページに
     if (!trimmedUrl) {
-      console.log('[DEBUG] Empty URL, navigating to Google')
       setUrl('https://www.google.com')
       return
     }
@@ -624,28 +749,22 @@ export default function DesktopApp() {
       if (normalizedUrl.includes(' ') || !normalizedUrl.includes('.')) {
         // 検索クエリの場合、Google検索に変換
         normalizedUrl = `https://www.google.com/search?q=${encodeURIComponent(normalizedUrl)}`
-        console.log('[DEBUG] Search query detected, normalized to:', normalizedUrl)
       } else {
         // URLの場合、https://を追加
         normalizedUrl = `https://${normalizedUrl}`
-        console.log('[DEBUG] URL detected, normalized to:', normalizedUrl)
       }
     }
     
     // URLの妥当性をチェック
     try {
       new URL(normalizedUrl)
-      console.log('[DEBUG] URL validation passed:', normalizedUrl)
     } catch (urlError) {
-      console.error('[DEBUG] Invalid URL:', normalizedUrl, urlError)
       // 無効なURLの場合はGoogle検索にフォールバック
       normalizedUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`
-      console.log('[DEBUG] Fallback to search:', normalizedUrl)
     }
     
     // WebView の src プロップと API の二重ナビゲーションを避けるため、
     // ここでは state 更新のみに統一する
-    console.log('[DEBUG] Setting url to:', normalizedUrl)
     setUrl(normalizedUrl)
   }
 

@@ -1,111 +1,164 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Anti-detection: navigator.webdriverを削除
-if (navigator.webdriver) {
-    Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined,
-        configurable: true
-    });
-}
-
-// セキュアなAPIをレンダラープロセスに公開
+// セキュアなコンテキストブリッジを設定
 contextBridge.exposeInMainWorld('electronAPI', {
-    // URL変更機能（メインウィンドウ用）
-    changeUrl: (url) => ipcRenderer.invoke('change-url', url),
-    getCurrentUrl: () => ipcRenderer.invoke('get-current-url'),
-    showUrlDialog: () => ipcRenderer.invoke('show-url-dialog'),
+    // 基本情報
+    platform: process.platform,
+    versions: process.versions,
 
-    // BrowserView制御API
+    // BrowserView API（エラーハンドリング付き）
     browserView: {
-        loadUrl: (url) => ipcRenderer.invoke('browserview-load-url', url),
-        getUrl: () => ipcRenderer.invoke('browserview-get-url'),
-        goBack: () => ipcRenderer.invoke('browserview-go-back'),
-        goForward: () => ipcRenderer.invoke('browserview-go-forward'),
-        reload: () => ipcRenderer.invoke('browserview-reload'),
-        canGoBack: () => ipcRenderer.invoke('browserview-can-go-back'),
-        canGoForward: () => ipcRenderer.invoke('browserview-can-go-forward'),
-        setBounds: (bounds) => ipcRenderer.invoke('browserview-set-bounds', bounds),
+        loadUrl: (url) => {
+            try {
+                return ipcRenderer.invoke('browser-view-load-url', url);
+            } catch (error) {
+                console.error('BrowserView loadUrl error:', error);
+                return Promise.resolve({ success: false, error: error.message });
+            }
+        },
+        getUrl: () => {
+            try {
+                return ipcRenderer.invoke('browser-view-get-url');
+            } catch (error) {
+                console.error('BrowserView getUrl error:', error);
+                return Promise.resolve({ success: false, error: error.message });
+            }
+        },
+        goBack: () => {
+            try {
+                return ipcRenderer.invoke('browser-view-go-back');
+            } catch (error) {
+                console.error('BrowserView goBack error:', error);
+                return Promise.resolve({ success: false, error: error.message });
+            }
+        },
+        goForward: () => {
+            try {
+                return ipcRenderer.invoke('browser-view-go-forward');
+            } catch (error) {
+                console.error('BrowserView goForward error:', error);
+                return Promise.resolve({ success: false, error: error.message });
+            }
+        },
+        reload: () => {
+            try {
+                return ipcRenderer.invoke('browser-view-reload');
+            } catch (error) {
+                console.error('BrowserView reload error:', error);
+                return Promise.resolve({ success: false, error: error.message });
+            }
+        },
+        canGoBack: () => {
+            try {
+                return ipcRenderer.invoke('browser-view-can-go-back');
+            } catch (error) {
+                console.error('BrowserView canGoBack error:', error);
+                return Promise.resolve({ success: false, canGoBack: false, error: error.message });
+            }
+        },
+        canGoForward: () => {
+            try {
+                return ipcRenderer.invoke('browser-view-can-go-forward');
+            } catch (error) {
+                console.error('BrowserView canGoForward error:', error);
+                return Promise.resolve({ success: false, canGoForward: false, error: error.message });
+            }
+        },
+        setBounds: (bounds) => {
+            try {
+                return ipcRenderer.invoke('browser-view-set-bounds', bounds);
+            } catch (error) {
+                console.error('BrowserView setBounds error:', error);
+                return Promise.resolve({ success: false, error: error.message });
+            }
+        },
 
-        // イベントリスナー
+        // イベントリスナー（エラーハンドリング付き）
         onUrlChanged: (callback) => {
-            ipcRenderer.on('browserview-url-changed', (event, url) => callback(url));
+            try {
+                ipcRenderer.on('browser-view-url-changed', (event, url) => {
+                    if (typeof callback === 'function') {
+                        callback(url);
+                    }
+                });
+            } catch (error) {
+                console.error('BrowserView onUrlChanged error:', error);
+            }
         },
         onCanGoBackChanged: (callback) => {
-            ipcRenderer.on('browserview-can-go-back', (event, canGoBack) => callback(canGoBack));
+            try {
+                ipcRenderer.on('browser-view-can-go-back-changed', (event, canGoBack) => {
+                    if (typeof callback === 'function') {
+                        callback(canGoBack);
+                    }
+                });
+            } catch (error) {
+                console.error('BrowserView onCanGoBackChanged error:', error);
+            }
         },
         onCanGoForwardChanged: (callback) => {
-            ipcRenderer.on('browserview-can-go-forward', (event, canGoForward) => callback(canGoForward));
+            try {
+                ipcRenderer.on('browser-view-can-go-forward-changed', (event, canGoForward) => {
+                    if (typeof callback === 'function') {
+                        callback(canGoForward);
+                    }
+                });
+            } catch (error) {
+                console.error('BrowserView onCanGoForwardChanged error:', error);
+            }
         },
         onLoadingStart: (callback) => {
-            ipcRenderer.on('browserview-loading-start', () => callback());
+            try {
+                ipcRenderer.on('browser-view-loading-start', () => {
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
+                });
+            } catch (error) {
+                console.error('BrowserView onLoadingStart error:', error);
+            }
         },
         onLoadingStop: (callback) => {
-            ipcRenderer.on('browserview-loading-stop', () => callback());
+            try {
+                ipcRenderer.on('browser-view-loading-stop', () => {
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
+                });
+            } catch (error) {
+                console.error('BrowserView onLoadingStop error:', error);
+            }
         }
-    },
-
-    // WebView作成（後方互換性のためのダミー関数）
-    createWebview: (options) => {
-        return Promise.resolve({ success: true });
-    },
-
-    // アプリ情報
-    platform: process.platform,
-    version: process.versions.electron,
-
-    // イベントリスナー（メインウィンドウ用）
-    onUrlChanged: (callback) => {
-        ipcRenderer.on('url-changed', (event, url) => callback(url));
     }
 });
 
-// chrome.runtimeを追加（正規のChromeブラウザのように見せる）
-if (!window.chrome) {
-    window.chrome = {};
-}
-if (!window.chrome.runtime) {
-    window.chrome.runtime = {};
-}
+// ページロード時のスクリプト注入
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('Turnstile Bypass - Preload script loaded');
 
-// Permissions APIを偽装
-const originalQuery = window.navigator.permissions?.query;
-if (originalQuery) {
-    window.navigator.permissions.query = (parameters) => (
-        parameters.name === 'notifications' ?
-            Promise.resolve({ state: Notification.permission }) :
-            originalQuery(parameters)
-    );
-}
-
-// プラグインを実在っぽいオブジェクトで偽装
-Object.defineProperty(navigator, 'plugins', {
-    get: () => [
-        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
-        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-        { name: 'Native Client', filename: 'internal-nacl-plugin' }
-    ],
-    configurable: true
+    // ページのメタ情報をログ出力
+    console.log('User Agent:', navigator.userAgent);
+    console.log('WebDriver:', navigator.webdriver);
+    console.log('Languages:', navigator.languages);
+    console.log('Platform:', navigator.platform);
 });
 
-// 言語設定を偽装
-Object.defineProperty(navigator, 'languages', {
-    get: () => ['ja', 'en-US', 'en'],
-    configurable: true
+// 自動化検出を回避するためのパッチ
+Object.defineProperty(navigator, 'webdriver', {
+    get: () => false,
 });
 
-// navigator.webdriver を常に undefined に偽装
-try {
-    Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined,
-        configurable: true
+// Chromeの自動化フラグを隠蔽
+if (window.navigator.plugins) {
+    Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5],
     });
-} catch (e) { }
+}
 
-// window.chrome を補完
-if (!window.chrome) {
-    window.chrome = {};
-}
-if (!window.chrome.runtime) {
-    window.chrome.runtime = {};
-}
+// 言語設定を自然に見せる
+Object.defineProperty(navigator, 'languages', {
+    get: () => ['en-US', 'en', 'ja'],
+});
+
+console.log('Turnstile Bypass - Patches applied');
 

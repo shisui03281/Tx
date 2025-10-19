@@ -34,7 +34,10 @@
 
             if (hasTurnstile) {
                 console.log('Turnstile is present on the page');
-                // 必要に応じて追加の処理をここに実装
+                // Turnstile要素を隠す
+                hideTurnstileElements();
+                // 人間らしい動作をシミュレート
+                simulateHumanBehavior();
             }
         }, 2000);
 
@@ -42,7 +45,12 @@
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.addedNodes.length > 0) {
-                    detectTurnstile();
+                    const hasTurnstile = detectTurnstile();
+                    if (hasTurnstile) {
+                        console.log('Turnstile detected in DOM changes');
+                        hideTurnstileElements();
+                        simulateHumanBehavior();
+                    }
                 }
             });
         });
@@ -51,6 +59,65 @@
             childList: true,
             subtree: true
         });
+    }
+
+    // Turnstile要素を隠す
+    function hideTurnstileElements() {
+        // Turnstileのiframeを隠す
+        const turnstileIframes = document.querySelectorAll('iframe[src*="challenges.cloudflare.com"]');
+        turnstileIframes.forEach(iframe => {
+            iframe.style.display = 'none';
+            iframe.style.visibility = 'hidden';
+            iframe.style.opacity = '0';
+            iframe.style.position = 'absolute';
+            iframe.style.left = '-9999px';
+        });
+
+        // Turnstileのウィジェットを隠す
+        const turnstileWidgets = document.querySelectorAll('[data-sitekey]');
+        turnstileWidgets.forEach(widget => {
+            widget.style.display = 'none';
+            widget.style.visibility = 'hidden';
+            widget.style.opacity = '0';
+        });
+
+        // Turnstileのコンテナを隠す
+        const turnstileContainers = document.querySelectorAll('.cf-turnstile, .turnstile-wrapper, [class*="turnstile"]');
+        turnstileContainers.forEach(container => {
+            container.style.display = 'none';
+            container.style.visibility = 'hidden';
+            container.style.opacity = '0';
+        });
+    }
+
+    // 人間らしい動作をシミュレート
+    function simulateHumanBehavior() {
+        // ランダムなマウス移動
+        const mouseMoveEvent = new MouseEvent('mousemove', {
+            clientX: Math.random() * window.innerWidth,
+            clientY: Math.random() * window.innerHeight,
+            bubbles: true
+        });
+        document.dispatchEvent(mouseMoveEvent);
+
+        // ランダムなクリック
+        setTimeout(() => {
+            const clickEvent = new MouseEvent('click', {
+                clientX: Math.random() * window.innerWidth,
+                clientY: Math.random() * window.innerHeight,
+                bubbles: true
+            });
+            document.dispatchEvent(clickEvent);
+        }, Math.random() * 1000 + 500);
+
+        // ランダムなキーボード入力
+        setTimeout(() => {
+            const keyEvent = new KeyboardEvent('keydown', {
+                key: String.fromCharCode(65 + Math.floor(Math.random() * 26)),
+                bubbles: true
+            });
+            document.dispatchEvent(keyEvent);
+        }, Math.random() * 1000 + 1000);
     }
 
     // ページのロード完了を待つ

@@ -1,4 +1,8 @@
 export interface ElectronAPI {
+  // 基本情報
+  platform: string
+  versions: NodeJS.ProcessVersions
+  
   // WebView関連 (後方互換性のため保持)
   createWebview: (options: { width?: number; height?: number }) => Promise<{ success: boolean; error?: string }>
   navigateWebview: (url: string) => Promise<{ success: boolean; url?: string; error?: string }>
