@@ -23,17 +23,24 @@
   ],
   "win": {
     "target": "nsis",
-    "icon": "public/placeholder-logo.png"
+    "icon": "public/placeholder-logo.png",
+    "publisherName": "Your Company Name"
   },
   "mac": {
     "target": "dmg",
     "icon": "public/placeholder-logo.png",
-    "category": "public.app-category.productivity"
+    "category": "public.app-category.productivity",
+    "publish": {
+      "provider": "github"
+    }
   },
   "linux": {
     "target": "AppImage",
     "icon": "public/placeholder-logo.png",
-    "category": "Office"
+    "category": "Office",
+    "publish": {
+      "provider": "github"
+    }
   },
   "nsis": {
     "oneClick": false,
@@ -41,7 +48,11 @@
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true
   },
-  "publish": null,
+  "publish": {
+    "provider": "github",
+    "owner": "your-username",
+    "repo": "desktop-app"
+  },
   "buildDependenciesFromSource": false,
   "nodeGypRebuild": false,
   "npmRebuild": false

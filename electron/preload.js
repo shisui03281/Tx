@@ -56,6 +56,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // イベントリスナー（メインウィンドウ用）
     onUrlChanged: (callback) => {
         ipcRenderer.on('url-changed', (event, url) => callback(url));
+    },
+
+    // 自動更新API
+    updater: {
+        checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+        downloadUpdate: () => ipcRenderer.invoke('download-update'),
+        installUpdate: () => ipcRenderer.invoke('install-update'),
+        getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+        // 更新イベントリスナー
+        onUpdateChecking: (callback) => {
+            ipcRenderer.on('update-checking', () => callback());
+        },
+        onUpdateAvailable: (callback) => {
+            ipcRenderer.on('update-available', (event, info) => callback(info));
+        },
+        onUpdateNotAvailable: (callback) => {
+            ipcRenderer.on('update-not-available', (event, info) => callback(info));
+        },
+        onUpdateError: (callback) => {
+            ipcRenderer.on('update-error', (event, error) => callback(error));
+        },
+        onUpdateDownloadProgress: (callback) => {
+            ipcRenderer.on('update-download-progress', (event, progress) => callback(progress));
+        },
+        onUpdateDownloaded: (callback) => {
+            ipcRenderer.on('update-downloaded', (event, info) => callback(info));
+        }
     }
 });
 

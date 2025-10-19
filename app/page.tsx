@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import UpdateNotification from "@/components/update-notification"
 
 type ActivePanel = "browser" | "settings" | "accounts" | "automation"
 
@@ -963,7 +964,7 @@ export default function DesktopApp() {
         return (
           <div className="p-8 animate-in fade-in duration-300">
             <h2 className="text-2xl font-bold text-foreground mb-6">Settings</h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="p-4 backdrop-blur-xl bg-foreground/5 rounded-lg border border-foreground/10 hover:border-foreground/20 hover:shadow-lg hover:shadow-[var(--color-unicorn-blue)]/10 transition-all duration-200">
                 <h3 className="text-lg font-semibold text-foreground mb-2">Application Settings</h3>
                 <p className="text-muted-foreground">Configure your application preferences here.</p>
@@ -971,6 +972,10 @@ export default function DesktopApp() {
               <div className="p-4 backdrop-blur-xl bg-foreground/5 rounded-lg border border-foreground/10 hover:border-foreground/20 hover:shadow-lg hover:shadow-[var(--color-unicorn-blue)]/10 transition-all duration-200">
                 <h3 className="text-lg font-semibold text-foreground mb-2">Browser Settings</h3>
                 <p className="text-muted-foreground">Customize browser behavior and security options.</p>
+              </div>
+              <div className="p-4 backdrop-blur-xl bg-foreground/5 rounded-lg border border-foreground/10 hover:border-foreground/20 hover:shadow-lg hover:shadow-[var(--color-unicorn-blue)]/10 transition-all duration-200">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Application Updates</h3>
+                <UpdateNotification />
               </div>
             </div>
           </div>

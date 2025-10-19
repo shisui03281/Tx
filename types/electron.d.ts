@@ -39,6 +39,22 @@ export interface ElectronAPI {
     onLoadingStart: (callback: () => void) => void
     onLoadingStop: (callback: () => void) => void
   }
+
+  // 自動更新API
+  updater: {
+    checkForUpdates: () => Promise<{ success: boolean; result?: any; error?: string }>
+    downloadUpdate: () => Promise<{ success: boolean; error?: string }>
+    installUpdate: () => Promise<{ success: boolean; error?: string }>
+    getAppVersion: () => Promise<{ version: string }>
+    
+    // 更新イベントリスナー
+    onUpdateChecking: (callback: () => void) => void
+    onUpdateAvailable: (callback: (info: any) => void) => void
+    onUpdateNotAvailable: (callback: (info: any) => void) => void
+    onUpdateError: (callback: (error: string) => void) => void
+    onUpdateDownloadProgress: (callback: (progress: any) => void) => void
+    onUpdateDownloaded: (callback: (info: any) => void) => void
+  }
 }
 
 export interface AdvancedTurnstileBypassAPI {

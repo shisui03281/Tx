@@ -1,4 +1,5 @@
 const { app, BrowserWindow, BrowserView, Menu, ipcMain, dialog, session } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -6,6 +7,56 @@ const isDev = process.env.NODE_ENV === 'development';
 if (isDev) {
     process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 }
+
+// 自動更新の設定
+autoUpdater.checkForUpdatesAndNotify();
+autoUpdater.autoDownload = false; // 手動でダウンロードを制御
+
+// 自動更新のイベントハンドラー
+autoUpdater.on('checking-for-update', () => {
+    console.log('更新をチェック中...');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-checking');
+    }
+});
+
+autoUpdater.on('update-available', (info) => {
+    console.log('更新が利用可能です:', info);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-available', info);
+    }
+});
+
+autoUpdater.on('update-not-available', (info) => {
+    console.log('更新は利用できません:', info);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-not-available', info);
+    }
+});
+
+autoUpdater.on('error', (err) => {
+    console.error('更新エラー:', err);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-error', err.message);
+    }
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+    let log_message = "ダウンロード速度: " + progressObj.bytesPerSecond;
+    log_message = log_message + ' - ダウンロード済み ' + progressObj.percent + '%';
+    log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+    console.log(log_message);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-download-progress', progressObj);
+    }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('更新のダウンロードが完了しました:', info);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-downloaded', info);
+    }
+});
 
 // Cloudflare Turnstileをbypassするための設定
 const TURNSTILE_BYPASS_CONFIG = {
@@ -917,6 +968,38 @@ ipcMain.handle('browserview-set-bounds', async (event, bounds) => {
     return { success: false };
 });
 
+// 自動更新用のIPCハンドラー
+ipcMain.handle('check-for-updates', async () => {
+    try {
+        const result = await autoUpdater.checkForUpdates();
+        return { success: true, result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('download-update', async () => {
+    try {
+        await autoUpdater.downloadUpdate();
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('install-update', async () => {
+    try {
+        autoUpdater.quitAndInstall();
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('get-app-version', async () => {
+    return { version: app.getVersion() };
+});
+
 // メニュー設定
 const template = [
     {
@@ -966,6 +1049,32 @@ const template = [
             {
                 label: 'Go to Localhost',
                 click: () => changeUrl('http://localhost:3000')
+            }
+        ]
+    },
+    {
+        label: 'Help',
+        submenu: [
+            {
+                label: 'Check for Updates',
+                click: async () => {
+                    try {
+                        await autoUpdater.checkForUpdates();
+                    } catch (error) {
+                        console.error('更新チェックエラー:', error);
+                    }
+                }
+            },
+            {
+                label: 'About',
+                click: () => {
+                    dialog.showMessageBox(mainWindow, {
+                        type: 'info',
+                        title: 'About',
+                        message: `Desktop App v${app.getVersion()}`,
+                        detail: 'Electronアプリケーション'
+                    });
+                }
             }
         ]
     },
